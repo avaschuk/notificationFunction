@@ -22,26 +22,23 @@ exports.sendNotification = functions.database.ref('/Notifications/{user_id}/{not
         const from_user_id = fromUserResult.val().from;
 
         const userQuery = admin.database().ref(`/Users/${from_user_id}/name`).once('value');
+        const deviceToken = admin.database().ref(`Users/${user_id}/device_token`).once('value');
 
-        return userQuery.then(userQueryResult => {
+        return Promise.all([userQuery, deviceToken])
+            .then(result => {
+               const userName = result[0].val();
+               const token_id = result[1].val();
 
-            const userName = userQueryResult.val();
-
-            console.log('You have a new notification from ', from_user_id);
-            const deviceToken = admin.database().ref(`/Users/${user_id}/device_token`).once('value');
-
-            return deviceToken.then(result => {
-
-                const token_id = result.val();
 
                 const payload = {
                     notification: {
                         title: "Friend Request",
                         body: `${userName} has sent you request`,
                         icon: "default",
+                        click_action: "com.andrei.lapitchat_TARGET_NOTIFICATION",
                     },
                     data: {
-                        timestamp: new Date().getTime().toString(),
+                        from_user_id: from_user_id,
                     }
                 };
 
@@ -56,6 +53,5 @@ exports.sendNotification = functions.database.ref('/Notifications/{user_id}/{not
                         console.log(error);
                     })
             });
-        });
     });
 });
