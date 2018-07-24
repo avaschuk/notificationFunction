@@ -16,29 +16,46 @@ exports.sendNotification = functions.database.ref('/Notifications/{user_id}/{not
         return console.log('A Notification has been deleted from the database : ', notification_id);
     }
 
-    const deviceToken = admin.database().ref(`/Users/${user_id}/device_token`).once('value');
+    const fromUser = admin.database().ref(`/Notifications/${user_id}/${notification_id}`).once('value');
 
-    return deviceToken.then(result => {
+    return fromUser.then(fromUserResult => {
+        const from_user_id = fromUserResult.val().from;
 
-        const token_id = result.val();
+        const userQuery = admin.database().ref(`/Users/${from_user_id}/name`).once('value');
 
-        const payload = {
-            notification: {
-                title: "Friend Request",
-                body: "You've received a new Friend Request",
-                icon: "default",
-            }
-        };
+        return userQuery.then(userQueryResult => {
 
-        return admin.messaging().sendToDevice(token_id, payload)
-            .then(response => {
-                console.log('This was the notification feature');
-                console.log(response);
-                return response;
-            })
-            .catch(error => {
-                console.log('error');
-                console.log(error);
-            })
+            const userName = userQueryResult.val();
+
+            console.log('You have a new notification from ', from_user_id);
+            const deviceToken = admin.database().ref(`/Users/${user_id}/device_token`).once('value');
+
+            return deviceToken.then(result => {
+
+                const token_id = result.val();
+
+                const payload = {
+                    notification: {
+                        title: "Friend Request",
+                        body: `${userName} has sent you request`,
+                        icon: "default",
+                    },
+                    data: {
+                        timestamp: new Date().getTime().toString(),
+                    }
+                };
+
+                return admin.messaging().sendToDevice(token_id, payload)
+                    .then(response => {
+                        console.log('This was the notification feature');
+                        console.log(response);
+                        return response;
+                    })
+                    .catch(error => {
+                        console.log('error');
+                        console.log(error);
+                    })
+            });
+        });
     });
 });
